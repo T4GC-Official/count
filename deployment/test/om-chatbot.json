@@ -2,8 +2,8 @@
   "family": "om-chatbot-test",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
-  "executionRoleArn": "arn:aws:iam::024848460644:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::024848460644:role/ecsMinimalTaskRole",
+  "executionRoleArn": "",
+  "taskRoleArn": "",
   "cpu": "256",
   "memory": "512",
   "containerDefinitions": [
@@ -36,7 +36,7 @@
         },
         {
           "name": "API_KEY",
-          "value": "7868725123:AAGex6CX1laOQiOkeOS4adpfSrqhi2mOwxM"
+          "value": ""
         }
       ],
       "logConfiguration": {
@@ -53,7 +53,7 @@
     {
       "name": "mongo-efs",
       "efsVolumeConfiguration": {
-        "fileSystemId": "fs-010c38cd2b3bbadd4"
+        "fileSystemId": ""
       }
     }
   ]
