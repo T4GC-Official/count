@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # MongoDB service
+  mongo:
+    build:
+      context: ./store/mongo
+      dockerfile: Dockerfile
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./store/mongo/mongod.conf:/etc/mongo/mongod.conf
+      - ${HOME}/mongo/data:/data/db
+      - ${HOME}/mongo/log:/var/log/mongodb
+    command:
+      - "/usr/local/bin/docker-entrypoint.sh"
+      - "mongod"
+      - "--config"
+      - "/etc/mongo/mongod.conf"
+    networks:
+      - chatbot
+  # Chatbot service
+  chatbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chatbot
+    depends_on:
+      - mongo
+    command: [ "python3", "./chatbot.py", "--host", "mongo" ]
+    env_file:
+      - .env
+    networks:
+      - chatbot
+
+networks:
+  chatbot:
+    driver: bridge

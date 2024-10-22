@@ -1,0 +1,55 @@
+---
+# Check if Docker is installed
+- name: Check if Docker is installed
+  command: docker --version
+  register: docker_version
+  ignore_errors: yes
+
+# Install Docker if not installed or incorrect version
+- name: Install Docker
+  apt:
+    name: docker-ce=5:27.1.2-1~ubuntu.22.04~jammy
+    state: present
+    update_cache: yes
+  when: docker_version.stdout is not search("Docker version 27.1.2")
+
+# Check if standalone Docker Compose is installed
+- name: Check if standalone Docker Compose is installed
+  command: docker-compose --version
+  register: docker_compose_standalone_version
+  ignore_errors: yes
+
+- name: Install Docker compose if not installed 
+  apt:
+    name: docker-compose
+    state: present
+  when: 
+    - docker_compose_standalone_version.failed
+
+# Check if Docker Compose plugin is installed
+- name: Check if Docker Compose is installed
+  command: docker compose version
+  register: docker_compose_version
+  ignore_errors: yes
+
+- name: Install Docker Compose plugin if not installed
+  apt:
+    name: docker-compose-plugin
+    state: present
+  when: docker_compose_version.stdout is not search("Docker Compose version")
+
+
+# Ensure Docker is running
+- name: Start and enable Docker
+  systemd:
+    name: docker
+    enabled: yes
+    state: started
+
+# Ensure the user can run Docker without sudo
+- name: Add user to Docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes
+
