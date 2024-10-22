@@ -1,0 +1,38 @@
+---
+# Create the ~/ansible directory in the user's home if it doesn't exist
+- name: Create ~/ansible directory
+  file:
+    path: "{{ ansible_env.HOME }}/ansible"
+    state: directory
+    mode: '0755'
+
+- name: Synchronize the parent directory to the ~/ansible/ directory, excluding venv and __pycache__
+  synchronize:
+    src: "{{ playbook_dir }}/../"
+    dest: "{{ ansible_env.HOME }}/ansible/organicmandya/"
+    delete: yes  # Optional: removes files in dest that are not in src
+    rsync_opts:
+      - "--exclude=venv"
+      - "--exclude=__pycache__"
+      - "--exclude=.git"  # Exclude other unnecessary directories
+
+# Stop and remove existing containers with the same name
+- name: Stop and remove existing containers with the same name
+  shell: |
+    docker-compose down
+  args:
+    chdir: "{{ ansible_env.HOME }}/ansible/organicmandya"
+  ignore_errors: yes
+
+# Remove stopped containers after down
+- name: Remove stopped containers
+  shell: |
+    docker container prune -f
+  ignore_errors: yes
+
+# Run Docker Compose to bring up the containers
+- name: Run Docker Compose
+  command: docker-compose up -d --build
+  args:
+    chdir: "{{ ansible_env.HOME }}/ansible/organicmandya"
+
