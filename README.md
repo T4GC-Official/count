@@ -18,6 +18,8 @@ We had some doubts about our users' ability to adopt the app's full functionalit
 
 In the meantime, we found an unexpected application for Count. One of our partners needed to collect frequent, quantitative data (specifically, the price and type of groceries a household buys) as part of a multi-stage survey. By integrating Count, we aim to improve the accuracy and quality of responses for this specific question.
 
+https://github.com/user-attachments/assets/a312d0e1-b29a-43d1-9994-21a7808af49b
+
 ## Running Count 
 
 WIP 
