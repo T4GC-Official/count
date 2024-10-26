@@ -22,11 +22,17 @@ https://github.com/user-attachments/assets/a312d0e1-b29a-43d1-9994-21a7808af49b
 
 ## Running Count 
 
-WIP 
+Build and run locally
+```
+$ make build IMAGE=<your repo>/<your image name> TAG=latest DOCKERFILE=./Dockerfile
+$ echo "API_KEY=<your-telegram-chatbot-api-key>" > ./.env
+$ cd ansible
+$ ansible-playbook playbook.yaml --connection=local --inventory 127.0.0.1, -K
+```
 
 ## Deploying Count
 
-WIP
+See [deployment guide](./docs/deployment.md) for AWS deployment. 
 
 ## Contributing 
 
