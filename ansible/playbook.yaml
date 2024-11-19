@@ -1,10 +1,10 @@
 ---
-- hosts: localhost
-  become: yes
-  vars:
-    ansible_user: "{{ lookup('env', 'USER') }}"
-  roles:
-    - install_docker
+# - hosts: localhost
+#  become: yes
+#  vars:
+#    ansible_user: "{{ lookup('env', 'USER') }}"
+#  roles:
+#    - install_docker
 
 - hosts: localhost
   become: yes

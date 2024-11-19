@@ -35,6 +35,8 @@ from constants import START_MSG, LABELS
 from summary import create_summary
 from bson import json_util
 from dotenv import load_dotenv
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import CallbackQueryHandler
 
 # Load all env vars from chatbot's .env - this file is not tracked by
 # git but created by the caller of this script and contains the API_KEY
@@ -44,7 +46,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-async def start(update: Update, context: CallbackContext) -> None:
+async def _start(update: Update, context: CallbackContext) -> None:
     """Handles what happens on /start. 
 
     Args: 
@@ -64,6 +66,92 @@ async def start(update: Update, context: CallbackContext) -> None:
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(START_MSG, reply_markup=reply_markup)
+
+
+async def start(update: Update, context: CallbackContext) -> None:
+    """Handles the /start command and displays the main category buttons."""
+    if update.callback_query:
+        message = update.callback_query.message
+    elif update.message:
+        message = update.message
+    else:
+        logging.error("Both update.message and update.callback_query are None")
+        return
+
+    keyboard = [
+        [InlineKeyboardButton("Food 🥘", callback_data="category:food")],
+        [InlineKeyboardButton("Household Items 🏠",
+                              callback_data="category:household")],
+        [InlineKeyboardButton("Fuel ⛽", callback_data="category:fuel")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    logging.info(f"[start] start invoked Update Message: ${update.message}")
+    await message.reply_text("Choose a category:", reply_markup=reply_markup)
+
+
+async def handle_button(update: Update, context: CallbackContext) -> None:
+    """Handles button presses and displays subcategories for further options."""
+    query = update.callback_query
+    await query.answer()
+
+    logging.info(
+        f"[handle_button]update received in handle_button ${update}")
+    data = query.data.split(":")
+    if data[0] == "category":
+        category = data[1]
+        if category == "food":
+            keyboard = [
+                [InlineKeyboardButton(
+                    "Vegetables 🥔🍅", callback_data="subcategory:food:vegetables")],
+                [InlineKeyboardButton(
+                    "Fruits 🍌🍉", callback_data="subcategory:food:fruits")],
+                [InlineKeyboardButton(
+                    "Meats 🍗🥚", callback_data="subcategory:food:meats")],
+                [InlineKeyboardButton(
+                    "Rice 🍚", callback_data="subcategory:food:rice")],
+                [InlineKeyboardButton(
+                    "Dairy Products 🐮🥛", callback_data="subcategory:food:dairy")]
+            ]
+        elif category == "household":
+            keyboard = [
+                [InlineKeyboardButton(
+                    "Soap 🧼", callback_data="subcategory:household:soap")],
+                [InlineKeyboardButton(
+                    "Clothes 👚👖", callback_data="subcategory:household:clothes")],
+                [InlineKeyboardButton(
+                    "Stationary 📚📝", callback_data="subcategory:household:stationary")],
+                [InlineKeyboardButton(
+                    "Cosmetics 💄", callback_data="subcategory:household:cosmetics")]
+            ]
+        elif category == "fuel":
+            keyboard = [
+                [InlineKeyboardButton(
+                    "Petrol ⛽", callback_data="subcategory:fuel:petrol")],
+                [InlineKeyboardButton(
+                    "Gas ⛽", callback_data="subcategory:fuel:gas")],
+                [InlineKeyboardButton(
+                    "Diesel", callback_data="subcategory:fuel:diesel")]
+            ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(f"Choose a subcategory under {category.title()}:", reply_markup=reply_markup)
+    elif data[0] == "subcategory":
+        category, subcategory = data[1], data[2]
+        keyboard = [
+            [InlineKeyboardButton("Produced within the village",
+                                  callback_data=f"source:{category}:{subcategory}:within")],
+            [InlineKeyboardButton("Produced outside the village",
+                                  callback_data=f"source:{category}:{subcategory}:outside")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(f"Where was this {subcategory} produced?", reply_markup=reply_markup)
+
+    elif data[0] == "source":
+        category, subcategory, source = data[1], data[2], data[3]
+        await query.edit_message_text(f"You selected: {category.title()} > {subcategory.title()} > {source.title()}")
+
+        # Send the user back up to the intial set of buttons.
+        await start(update, context)
 
 
 async def handle_updates(update: Update, context: CallbackContext) -> None:
@@ -140,7 +228,7 @@ def main():
                         help="User supplied chatbot name. If unspecified the name is pulled from the name associated with the API key. ")
     parser.add_argument(
         "--log-level",
-        default="DEBUG",
+        default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level"
     )
@@ -169,6 +257,8 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT, handle_updates))
     app.add_handler(MessageHandler(filters.LOCATION, handle_updates))
     app.add_handler(MessageHandler(filters.PHOTO, handle_pic))
+    # Handles inline button presses
+    app.add_handler(CallbackQueryHandler(handle_button))
 
     app.run_polling()
 
