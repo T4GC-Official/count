@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "chatbot",
-      "image": "bprashanth/cc-lipok-chatbot:latest",
+      "image": "bprashanth/cc-lipok-chatbot:0.5",
       "essential": true,
       "command": [
         "supervisord",

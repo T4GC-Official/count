@@ -35,7 +35,7 @@ from constants import START_MSG, LABELS
 from summary import create_summary
 from bson import json_util
 from dotenv import load_dotenv
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ForceReply
 from telegram.ext import CallbackQueryHandler
 
 # Load all env vars from chatbot's .env - this file is not tracked by
@@ -85,8 +85,6 @@ async def start(update: Update, context: CallbackContext) -> None:
         [InlineKeyboardButton("Fuel ⛽", callback_data="category:fuel")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
-    logging.info(f"[start] start invoked Update Message: ${update.message}")
     await message.reply_text("Choose a category:", reply_markup=reply_markup)
 
 
@@ -95,8 +93,6 @@ async def handle_button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     await query.answer()
 
-    logging.info(
-        f"[handle_button]update received in handle_button ${update}")
     data = query.data.split(":")
     if data[0] == "category":
         category = data[1]
@@ -148,10 +144,42 @@ async def handle_button(update: Update, context: CallbackContext) -> None:
 
     elif data[0] == "source":
         category, subcategory, source = data[1], data[2], data[3]
-        await query.edit_message_text(f"You selected: {category.title()} > {subcategory.title()} > {source.title()}")
 
-        # Send the user back up to the intial set of buttons.
-        await start(update, context)
+        # Store some key details for later use
+        context.user_data["category"] = category
+        context.user_data["subcategory"] = subcategory
+        context.user_data["source"] = source
+
+        keyboard = [
+            [InlineKeyboardButton("0-50", callback_data="price:0-50"),
+             InlineKeyboardButton("50-100", callback_data="price:50-100"),
+             InlineKeyboardButton("100-200", callback_data="price:100-200")],
+            [InlineKeyboardButton("Custom", callback_data="price:custom")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(
+            f"You selected: {category.title()} > {subcategory.title()} > {source.title()}.\n\nPlease select a price:",
+            reply_markup=reply_markup
+        )
+        return
+
+    elif data[0] == "price":
+        price_range = data[1]
+
+        if price_range == "custom":
+            await query.message.reply_text(
+                "Enter your price:",
+                reply_markup=ForceReply(selective=True)
+            )
+
+            context.user_data["state"] = "awaiting_custom_price"
+            return
+        else:
+            context.user_data["price"] = price_range
+            await query.edit_message_text(f"Price selected: {price_range}")
+            await start(update, context)
+            return
 
 
 async def handle_updates(update: Update, context: CallbackContext) -> None:
@@ -168,6 +196,27 @@ async def handle_updates(update: Update, context: CallbackContext) -> None:
         None: The return value is ignored by the telegram bot framework. 
     """
     pprint(update.to_dict())
+
+    # Lipok state management. This state was set in the last inline keyboard
+    # button and is handled here because the custom price is captured through a
+    # force reply keyboard.
+    if context.user_data.get("state") == "awaiting_custom_price":
+        price = update.message.text
+        if price.isdigit():
+            context.user_data["price"] = int(price)
+            context.user_data.pop("state")
+            await update.message.reply_text(f"Custom price entered: {price}")
+
+            logging.info(f"Collected data: {context.user_data}")
+
+            await update.message.reply_text(
+                "Thank you! returning to main menu..")
+            await start(update, context)
+        else:
+            await update.message.reply_text(
+                "Please enter a valid integer price.")
+        return
+
     ts = TelegramStore()
     if update.message and update.message.text == LABELS["picture"]:
         await update.message.reply_text("Upload a picture by pressing 📎")
