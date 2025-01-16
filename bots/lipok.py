@@ -33,9 +33,56 @@ from telegram.ext import CommandHandler, CallbackContext, MessageHandler, filter
 from telegram import Update
 import logging
 from .base import BaseBot
+import datetime
+
+logger = logging.getLogger(__name__)
+
+
+class LipokBotUpdate():
+    """LipokBotUpdate is a wrapper around Update 
+
+    It's main use is to link an update to a selection path.
+
+    In other words it is used to store the selection path of the user, i.e the
+    path of buttons pressed by the user to end up at the current state.
+    """
+
+    @staticmethod
+    def insert(update: Update, **kwargs):
+        if update is None:
+            return
+
+        ts = TelegramStore()
+        ts.insert_update(update)
+        logger.debug(f"Inserted update: {update}")
+
+        if "selection_path" not in kwargs or not kwargs["selection_path"]:
+            return
+
+        # Create metadata document with update_id as reference
+        # Prepend the user id to all selection paths so it can be used in the
+        # filter. This is a bit of a hack, but it works.
+        selection_path = f"{update.effective_user.id}:{kwargs.get('selection_path')}"
+        metadata = {
+            "update_id": update.update_id,
+            "selection_path": selection_path,
+            "timestamp": datetime.datetime.now(),
+            "user_id": update.effective_user.id,
+            "user_name": update.effective_user.name,
+            "user_username": update.effective_user.username,
+            "user_language_code": update.effective_user.language_code,
+        }
+        # Store metadata in separate collection
+        ts.insert_metadata(metadata)
+        logger.info(f"Inserted metadata: {metadata}")
 
 
 class LipokBot(BaseBot):
+
+    # Key for storing the selection path in user_data, i.e the path of buttons
+    # pressed by the user to end up at the current state.
+    SELECTION_PATH = "t4g_selection_path"
+
     def setup_handlers(self):
         # Initialize MongoDB store
         ts = TelegramStore(
@@ -63,7 +110,6 @@ def run_bot(**kwargs):
 
 async def start(update: Update, context: CallbackContext) -> None:
     """Handles the /start command and displays the main category buttons."""
-    logger = logging.getLogger(__name__)
     logger.info(f"Start command received from user {update.effective_user.id}")
     if update.callback_query:
         message = update.callback_query.message
@@ -72,6 +118,10 @@ async def start(update: Update, context: CallbackContext) -> None:
     else:
         logging.error("Both update.message and update.callback_query are None")
         return
+
+    current_path = "/start"
+    LipokBotUpdate.insert(update, selection_path=current_path)
+    context.user_data[LipokBot.SELECTION_PATH] = current_path
 
     keyboard = [
         [InlineKeyboardButton("Food 🥘", callback_data="category:food")],
@@ -85,12 +135,18 @@ async def start(update: Update, context: CallbackContext) -> None:
 
 async def handle_button(update: Update, context: CallbackContext) -> None:
     """Handles button presses and displays subcategories for further options."""
-    logger = logging.getLogger(__name__)
-    logger.info(f"Button pressed: {update.callback_query.data}")
+
     query = update.callback_query
     await query.answer()
 
     data = query.data.split(":")
+    current_path = f"{context.user_data[LipokBot.SELECTION_PATH]}:{data[-1]}"
+    context.user_data[LipokBot.SELECTION_PATH] = current_path
+    LipokBotUpdate.insert(update, selection_path=current_path)
+
+    # The use of "subcategory" is questionable and only works because we have 2
+    # levels of categories. Once subcategory is observed, we drop the user into
+    # the inside/outside village selection state.
     if data[0] == "category":
         category = data[1]
         if category == "food":
@@ -128,6 +184,7 @@ async def handle_button(update: Update, context: CallbackContext) -> None:
             ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(f"Choose a subcategory under {category.title()}:", reply_markup=reply_markup)
+
     elif data[0] == "subcategory":
         category, subcategory = data[1], data[2]
         keyboard = [
@@ -169,13 +226,11 @@ async def handle_button(update: Update, context: CallbackContext) -> None:
                 "Enter your price:",
                 reply_markup=ForceReply(selective=True)
             )
-
             context.user_data["state"] = "awaiting_custom_price"
             return
         else:
-            context.user_data["price"] = price_range
             await query.edit_message_text(f"Price selected: {price_range}")
-            await start(update, context)
+            await clear_state_and_start(update, context)
             return
 
 
@@ -184,9 +239,24 @@ async def handle_custom_price(update: Update, context: CallbackContext) -> None:
     if context.user_data.get("state") != "awaiting_custom_price":
         return
 
+    logger = logging.getLogger(__name__)
+
     price = update.message.text
-    context.user_data["price"] = price
-    context.user_data.pop("state")  # Clear the awaiting state
+    current_path = context.user_data.get(
+        LipokBot.SELECTION_PATH, str(update.effective_user.id))
+
+    # Complete path with custom price
+    final_path = f"{current_path}:{price}"
+    LipokBotUpdate.insert(update, selection_path=final_path)
 
     await update.message.reply_text(f"Price set to: {price}")
+    await clear_state_and_start(update, context)
+
+
+async def clear_state_and_start(update: Update, context: CallbackContext) -> None:
+    """Clears the user state and restarts their selection path."""
+    if "state" in context.user_data:
+        context.user_data.pop("state")
+    if LipokBot.SELECTION_PATH in context.user_data:
+        context.user_data.pop(LipokBot.SELECTION_PATH)
     await start(update, context)

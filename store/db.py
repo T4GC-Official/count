@@ -18,7 +18,7 @@ import logging
 from pymongo import MongoClient, errors, ASCENDING
 from pymongo.collection import Collection
 from pymongo.database import Database
-from typing import Any, Dict
+from typing import Any, Dict, List
 from abc import ABC, abstractmethod
 from telegram import Update, Bot
 
@@ -117,6 +117,7 @@ class TelegramStore:
     This class manages a singleton instances that talks to the database. Every invocation goes through the same instance created in __new__. 
     """
     update_table_name = "updates"
+    metadata_table_name = "metadata"
     indices = [("user_id", ASCENDING)]
 
     # Singleton attributes
@@ -200,3 +201,53 @@ class TelegramStore:
         update_dicts = self._db_manager.find(
             filter, limit, self.db_name, self.update_table_name)
         return [Update.de_json(u, self._bot) for u in update_dicts]
+
+    def insert_metadata(self, metadata: dict) -> None:
+        """Insert metadata into the metadata collection.
+
+        Args:
+            metadata: The metadata to insert, eg: 
+            {
+                "update_id": 123,
+                "selection_path": "button1:button2",
+                "timestamp": datetime.datetime.now(),
+                "user_id": 123,
+                "user_name": "user1",
+                "user_username": "user1",
+                "user_language_code": "en",
+            }
+        """
+        self._db_manager.insert(metadata, self.db_name,
+                                self.metadata_table_name)
+
+    def get_updates_by_metadata(self, selection_path_pattern: str) -> List[Update]:
+        """Get updates by metadata.
+
+        Args:
+            selection_path_pattern: The selection path pattern to filter by.
+
+        Returns:
+            A list of updates that match the selection path pattern.
+        """
+        metadata_docs = self._db_manager.find(
+            {"selection_path": {"$regex": selection_path_pattern}},
+            self.db_name,
+            self.metadata_table_name
+        )
+
+        # Get all update_ids
+        update_ids = [doc["update_id"] for doc in metadata_docs]
+
+        # Then fetch all corresponding updates
+        updates = []
+        for update_id in update_ids:
+            update_dict = self._db_manager.find_one(
+                {"update_id": update_id},
+                self.db_name,
+                self.update_table_name
+            )
+            if update_dict:
+                update = Update.de_json(update_dict, self.bot)
+                updates.append(update)
+
+        return updates
