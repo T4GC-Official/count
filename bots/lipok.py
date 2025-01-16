@@ -127,6 +127,10 @@ class LipokBot(BaseBot):
                                       callback_data=f"subcategory:{FOOD}:{MEATS}")],
                 [InlineKeyboardButton(get_button_text(RICE),
                                       callback_data=f"subcategory:{FOOD}:{RICE}")],
+                [InlineKeyboardButton(get_button_text(MILLETS),
+                                      callback_data=f"subcategory:{FOOD}:{MILLETS}")],
+                [InlineKeyboardButton(get_button_text(WHEAT),
+                                      callback_data=f"subcategory:{FOOD}:{WHEAT}")],
                 [InlineKeyboardButton(get_button_text(DAIRY),
                                       callback_data=f"subcategory:{FOOD}:{DAIRY}")]
             ]
@@ -155,9 +159,9 @@ class LipokBot(BaseBot):
     @staticmethod
     def get_source_keyboard(category: str, subcategory: str) -> InlineKeyboardMarkup:
         keyboard = [
-            [InlineKeyboardButton(TRANSLATIONS[WITHIN_VILLAGE],
+            [InlineKeyboardButton(get_button_text(WITHIN_VILLAGE),
                                   callback_data=f"source:{category}:{subcategory}:{WITHIN_VILLAGE}")],
-            [InlineKeyboardButton(TRANSLATIONS[OUTSIDE_VILLAGE],
+            [InlineKeyboardButton(get_button_text(OUTSIDE_VILLAGE),
                                   callback_data=f"source:{category}:{subcategory}:{OUTSIDE_VILLAGE}")]
         ]
         return InlineKeyboardMarkup(keyboard)
@@ -165,11 +169,11 @@ class LipokBot(BaseBot):
     @staticmethod
     def get_price_keyboard() -> InlineKeyboardMarkup:
         keyboard = [
-            [InlineKeyboardButton(TRANSLATIONS[PRICE_0_50], callback_data=f"price:{PRICE_0_50}"),
+            [InlineKeyboardButton(get_button_text(PRICE_0_50), callback_data=f"price:{PRICE_0_50}"),
              InlineKeyboardButton(
-                 TRANSLATIONS[PRICE_50_100], callback_data=f"price:{PRICE_50_100}"),
-             InlineKeyboardButton(TRANSLATIONS[PRICE_100_200], callback_data=f"price:{PRICE_100_200}")],
-            [InlineKeyboardButton(TRANSLATIONS[PRICE_CUSTOM],
+                 get_button_text(PRICE_50_100), callback_data=f"price:{PRICE_50_100}"),
+             InlineKeyboardButton(get_button_text(PRICE_100_200), callback_data=f"price:{PRICE_100_200}")],
+            [InlineKeyboardButton(get_button_text(PRICE_CUSTOM),
                                   callback_data=f"price:{PRICE_CUSTOM}")]
         ]
         return InlineKeyboardMarkup(keyboard)
