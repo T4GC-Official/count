@@ -34,6 +34,7 @@ from telegram import Update
 import logging
 from .base import BaseBot
 import datetime
+from translations.lipok import *
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +103,77 @@ class LipokBot(BaseBot):
         self.app.add_handler(MessageHandler(
             filters.TEXT & ~filters.COMMAND, handle_custom_price))
 
+    @staticmethod
+    def get_main_keyboard() -> InlineKeyboardMarkup:
+        keyboard = [
+            [InlineKeyboardButton(get_button_text(
+                FOOD), callback_data=f"category:{FOOD}")],
+            [InlineKeyboardButton(get_button_text(
+                HOUSEHOLD), callback_data=f"category:{HOUSEHOLD}")],
+            [InlineKeyboardButton(get_button_text(
+                FUEL), callback_data=f"category:{FUEL}")]
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def get_category_keyboard(category: str) -> InlineKeyboardMarkup:
+        if category == FOOD:
+            keyboard = [
+                [InlineKeyboardButton(get_button_text(VEGETABLES),
+                                      callback_data=f"subcategory:{FOOD}:{VEGETABLES}")],
+                [InlineKeyboardButton(get_button_text(FRUITS),
+                                      callback_data=f"subcategory:{FOOD}:{FRUITS}")],
+                [InlineKeyboardButton(get_button_text(MEATS),
+                                      callback_data=f"subcategory:{FOOD}:{MEATS}")],
+                [InlineKeyboardButton(get_button_text(RICE),
+                                      callback_data=f"subcategory:{FOOD}:{RICE}")],
+                [InlineKeyboardButton(get_button_text(DAIRY),
+                                      callback_data=f"subcategory:{FOOD}:{DAIRY}")]
+            ]
+        elif category == HOUSEHOLD:
+            keyboard = [
+                [InlineKeyboardButton(get_button_text(SOAP),
+                                      callback_data=f"subcategory:{HOUSEHOLD}:{SOAP}")],
+                [InlineKeyboardButton(get_button_text(CLOTHES),
+                                      callback_data=f"subcategory:{HOUSEHOLD}:{CLOTHES}")],
+                [InlineKeyboardButton(get_button_text(STATIONARY),
+                                      callback_data=f"subcategory:{HOUSEHOLD}:{STATIONARY}")],
+                [InlineKeyboardButton(get_button_text(COSMETICS),
+                                      callback_data=f"subcategory:{HOUSEHOLD}:{COSMETICS}")]
+            ]
+        elif category == FUEL:
+            keyboard = [
+                [InlineKeyboardButton(get_button_text(PETROL),
+                                      callback_data=f"subcategory:{FUEL}:{PETROL}")],
+                [InlineKeyboardButton(get_button_text(GAS),
+                                      callback_data=f"subcategory:{FUEL}:{GAS}")],
+                [InlineKeyboardButton(get_button_text(DIESEL),
+                                      callback_data=f"subcategory:{FUEL}:{DIESEL}")]
+            ]
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def get_source_keyboard(category: str, subcategory: str) -> InlineKeyboardMarkup:
+        keyboard = [
+            [InlineKeyboardButton(TRANSLATIONS[WITHIN_VILLAGE],
+                                  callback_data=f"source:{category}:{subcategory}:{WITHIN_VILLAGE}")],
+            [InlineKeyboardButton(TRANSLATIONS[OUTSIDE_VILLAGE],
+                                  callback_data=f"source:{category}:{subcategory}:{OUTSIDE_VILLAGE}")]
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
+    def get_price_keyboard() -> InlineKeyboardMarkup:
+        keyboard = [
+            [InlineKeyboardButton(TRANSLATIONS[PRICE_0_50], callback_data=f"price:{PRICE_0_50}"),
+             InlineKeyboardButton(
+                 TRANSLATIONS[PRICE_50_100], callback_data=f"price:{PRICE_50_100}"),
+             InlineKeyboardButton(TRANSLATIONS[PRICE_100_200], callback_data=f"price:{PRICE_100_200}")],
+            [InlineKeyboardButton(TRANSLATIONS[PRICE_CUSTOM],
+                                  callback_data=f"price:{PRICE_CUSTOM}")]
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
 
 def run_bot(**kwargs):
     bot = LipokBot(**kwargs)
@@ -123,13 +195,7 @@ async def start(update: Update, context: CallbackContext) -> None:
     LipokBotUpdate.insert(update, selection_path=current_path)
     context.user_data[LipokBot.SELECTION_PATH] = current_path
 
-    keyboard = [
-        [InlineKeyboardButton("Food 🥘", callback_data="category:food")],
-        [InlineKeyboardButton("Household Items 🏠",
-                              callback_data="category:household")],
-        [InlineKeyboardButton("Fuel ⛽", callback_data="category:fuel")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = LipokBot.get_main_keyboard()
     await message.reply_text("Choose a category:", reply_markup=reply_markup)
 
 
@@ -149,51 +215,12 @@ async def handle_button(update: Update, context: CallbackContext) -> None:
     # the inside/outside village selection state.
     if data[0] == "category":
         category = data[1]
-        if category == "food":
-            keyboard = [
-                [InlineKeyboardButton(
-                    "Vegetables 🥔🍅", callback_data="subcategory:food:vegetables")],
-                [InlineKeyboardButton(
-                    "Fruits 🍌🍉", callback_data="subcategory:food:fruits")],
-                [InlineKeyboardButton(
-                    "Meats 🍗🥚", callback_data="subcategory:food:meats")],
-                [InlineKeyboardButton(
-                    "Rice 🍚", callback_data="subcategory:food:rice")],
-                [InlineKeyboardButton(
-                    "Dairy Products 🐮🥛", callback_data="subcategory:food:dairy")]
-            ]
-        elif category == "household":
-            keyboard = [
-                [InlineKeyboardButton(
-                    "Soap 🧼", callback_data="subcategory:household:soap")],
-                [InlineKeyboardButton(
-                    "Clothes 👚👖", callback_data="subcategory:household:clothes")],
-                [InlineKeyboardButton(
-                    "Stationary 📚📝", callback_data="subcategory:household:stationary")],
-                [InlineKeyboardButton(
-                    "Cosmetics 💄", callback_data="subcategory:household:cosmetics")]
-            ]
-        elif category == "fuel":
-            keyboard = [
-                [InlineKeyboardButton(
-                    "Petrol ⛽", callback_data="subcategory:fuel:petrol")],
-                [InlineKeyboardButton(
-                    "Gas ⛽", callback_data="subcategory:fuel:gas")],
-                [InlineKeyboardButton(
-                    "Diesel", callback_data="subcategory:fuel:diesel")]
-            ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_markup = LipokBot.get_category_keyboard(category)
         await query.edit_message_text(f"Choose a subcategory under {category.title()}:", reply_markup=reply_markup)
 
     elif data[0] == "subcategory":
         category, subcategory = data[1], data[2]
-        keyboard = [
-            [InlineKeyboardButton("Produced within the village",
-                                  callback_data=f"source:{category}:{subcategory}:within")],
-            [InlineKeyboardButton("Produced outside the village",
-                                  callback_data=f"source:{category}:{subcategory}:outside")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_markup = LipokBot.get_source_keyboard(category, subcategory)
         await query.edit_message_text(f"Where was this {subcategory} produced?", reply_markup=reply_markup)
 
     elif data[0] == "source":
@@ -204,13 +231,7 @@ async def handle_button(update: Update, context: CallbackContext) -> None:
         context.user_data["subcategory"] = subcategory
         context.user_data["source"] = source
 
-        keyboard = [
-            [InlineKeyboardButton("0-50", callback_data="price:0-50"),
-             InlineKeyboardButton("50-100", callback_data="price:50-100"),
-             InlineKeyboardButton("100-200", callback_data="price:100-200")],
-            [InlineKeyboardButton("Custom", callback_data="price:custom")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_markup = LipokBot.get_price_keyboard()
 
         await query.edit_message_text(
             f"You selected: {category.title()} > {subcategory.title()} > {source.title()}.\n\nPlease select a price:",
