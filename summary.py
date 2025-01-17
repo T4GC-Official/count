@@ -22,7 +22,15 @@ from typing import List, Dict, Any
 from datetime import datetime, date
 from io import BytesIO
 from telegram import Update
-from translations.lipok import get_button_text, LANGUAGE
+from translations.lipok import get_button_text, LANGUAGE, CATEGORY, DESCRIPTION, TOTAL_AMOUNT, AMOUNT
+
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 
 class Summary:
@@ -41,6 +49,7 @@ class Summary:
         self.end_date = end_date
         self.category_totals = category_totals
         self.description_totals = description_totals
+        self.language = language
         if language != "en":
             logging.info(f"Setting font family to: {language}")
             # TODO(prashanth@): NotoSansDevanagari does NOT work. Emperically
@@ -184,6 +193,142 @@ class Summary:
             'end': end_date,
         }
         return result
+
+    def create_pdf(self) -> BytesIO:
+        """Creates a PDF with the summary data using either FPDF or ReportLab."""
+        if self.language == "en":
+            return self._create_fpdf()
+        else:
+            return self._create_reportlab()
+
+    def _create_reportlab(self) -> BytesIO:
+        """Creates PDF using ReportLab for non-English languages."""
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+
+        # Register fonts
+        pdfmetrics.registerFont(TTFont('Gargi', 'fonts/Gargi.ttf'))
+
+        # Create styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Title'],
+            fontName='Gargi',
+            fontSize=16,
+            spaceAfter=30
+        )
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontName='Gargi',
+            fontSize=12,
+            spaceAfter=20
+        )
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading1'],
+            fontName='Gargi',
+            fontSize=14,
+            spaceAfter=20
+        )
+
+        # Build content
+        elements = []
+
+        # Title
+        elements.append(Paragraph(self.title(), title_style))
+        elements.append(Paragraph(self.intro(), normal_style))
+
+        # Top-level breakdown
+        elements.append(Paragraph("Top-Level Breakdown", heading_style))
+
+        # Category totals table
+        category_data = [[get_button_text(CATEGORY, self.language),
+                         get_button_text(TOTAL_AMOUNT, self.language)]]
+        for category, total in self.category_totals.items():
+            category_data.append([_clean(category), str(total)])
+
+        category_table = Table(category_data)
+        category_table.setStyle(TableStyle([
+            ('FONT', (0, 0), (-1, -1), 'Gargi', 12),
+            ('FONTNAME', (0, 0), (-1, 0), 'Gargi'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#C8DCFF')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), ['#F5F5F5', '#FFFFFF'])
+        ]))
+        elements.append(category_table)
+        elements.append(Spacer(1, 20))
+
+        # Detailed breakdown
+        elements.append(
+            Paragraph("Detailed Breakdown by Category", heading_style))
+
+        # Create detailed tables for each category
+        for category, descriptions in self.description_totals.items():
+            elements.append(Paragraph(_clean(category), normal_style))
+
+            desc_data = [[get_button_text(DESCRIPTION, self.language),
+                         get_button_text(AMOUNT, self.language)]]
+            for desc, amount in descriptions.items():
+                desc_data.append([_clean(desc), str(amount)])
+
+            desc_table = Table(desc_data)
+            desc_table.setStyle(TableStyle([
+                ('FONT', (0, 0), (-1, -1), 'Gargi', 12),
+                ('FONTNAME', (0, 0), (-1, 0), 'Gargi'),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#DCF0FF')),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), ['#F5F5F5', '#FFFFFF'])
+            ]))
+            elements.append(desc_table)
+            elements.append(Spacer(1, 10))
+
+        # Build the PDF
+        doc.build(elements)
+        buffer.seek(0)
+        return buffer
+
+    def _create_fpdf(self) -> BytesIO:
+        """Creates PDF using FPDF for English language."""
+        # Move existing PDF creation code here
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.add_font("NotoSans", "", "fonts/NotoSans-Regular.ttf", uni=True)
+        pdf.add_font("NotoSans", "B", "fonts/NotoSans-Bold.ttf", uni=True)
+
+        pdf.add_font("Gargi", "", "fonts/Gargi.ttf", uni=True)
+        pdf.add_font("Gargi", "B", "fonts/Gargi.ttf", uni=True)
+
+        # Title formatting
+        pdf.set_font(self.font_family, "B", size=16)
+        pdf.cell(0, 10, self.title(), ln=True, align='C')
+        pdf.ln(10)
+
+        pdf.set_font(self.font_family, "", size=12)
+        pdf.multi_cell(0, 10, self.intro(), border=1, align='J', fill=False)
+
+        pdf.set_font(self.font_family, "B", size=14)
+        pdf.cell(0, 10, "Top-Level Breakdown", ln=True, align='C')
+        pdf.ln(5)
+
+        self.format_category_totals(pdf)
+
+        # Leave some space and add the description breakdown
+        pdf.ln(10)
+        pdf.set_font(self.font_family, "B", size=14)
+        pdf.cell(0, 10, "Detailed Breakdown by Category", align='C', ln=True)
+        pdf.ln(5)
+
+        self.format_description_totals(pdf)
+
+        # Write to Bytes buffer and merge with template
+        pdf_string = pdf.output(dest='S').encode('latin1')
+        return BytesIO(pdf_string)
 
 
 def updates_to_summary(updates: List[Update]) -> Summary:
@@ -365,17 +510,17 @@ def metadata_to_summary(metadata: list[dict]) -> Summary:
         start_date=start_date,
         end_date=end_date,
         category_totals={
-            get_button_text(k, language="en"): v
+            get_button_text(k, language=LANGUAGE): v
             for k, v in category_totals.items()
         },
         description_totals={
-            get_button_text(k, language="en"): {
-                get_button_text(d, language="en"): v
+            get_button_text(k, language=LANGUAGE): {
+                get_button_text(d, language=LANGUAGE): v
                 for d, v in v.items()
             }
             for k, v in description_totals.items()
         },
-        language="en"
+        language=LANGUAGE
     )
 
 
@@ -399,40 +544,7 @@ def create_summary(updates: list[Update], metadata: list[dict]) -> BytesIO:
         logging.error("No updates or metadata provided")
         return None
 
-    # Open a PDF document and add fonts to it
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.add_font("NotoSans", "", "fonts/NotoSans-Regular.ttf", uni=True)
-    pdf.add_font("NotoSans", "B", "fonts/NotoSans-Bold.ttf", uni=True)
-    pdf.add_font("Gargi", "", "fonts/Gargi.ttf", uni=True)
-    pdf.add_font("Gargi", "B", "fonts/Gargi.ttf", uni=True)
-
-    # Title formatting
-    pdf.set_font(summary.font_family, "B", size=16)
-    pdf.cell(0, 10, summary.title(), ln=True, align='C')
-    pdf.ln(10)
-
-    pdf.set_font(summary.font_family, "", size=12)
-    pdf.multi_cell(0, 10, summary.intro(), border=1, align='J', fill=False)
-
-    pdf.set_font(summary.font_family, "B", size=14)
-    pdf.cell(0, 10, "Top-Level Breakdown", ln=True, align='C')
-    pdf.ln(5)
-
-    summary.format_category_totals(pdf)
-
-    # Leave some space and add the description breakdown
-    pdf.ln(10)
-    pdf.set_font(summary.font_family, "B", size=14)
-    pdf.cell(0, 10, "Detailed Breakdown by Category", align='C', ln=True)
-    pdf.ln(5)
-
-    summary.format_description_totals(pdf)
-
-    # Write to Bytes buffer and merge with template
-    pdf_string = pdf.output(dest='S').encode('latin1')
-    summary_pdf_buffer = BytesIO(pdf_string)
-
+    summary_pdf_buffer = summary.create_pdf()
     return merge(summary_pdf_buffer, TEMPLATE_PATH)
 
 
