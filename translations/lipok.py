@@ -34,6 +34,11 @@ PRICE_100_200 = "100-200"
 PRICE_CUSTOM = "custom"
 SUMMARY = "summary"
 
+CATEGORY = "category"
+DESCRIPTION = "description"
+TOTAL_AMOUNT = "total_amount"
+AMOUNT = "amount"
+
 # Emojis
 EMOJI = {
     FOOD: "🥘",
@@ -93,6 +98,11 @@ TRANSLATIONS = {
     PRICE_100_200: "100-200",
     PRICE_CUSTOM: "Custom",
 
+    CATEGORY: "Category",
+    DESCRIPTION: "Description",
+    TOTAL_AMOUNT: "Total Amount",
+    AMOUNT: "Amount",
+
     # Summary
     SUMMARY: "Summary",
 }
@@ -133,6 +143,11 @@ TRANSLATIONS_MARATHI = {
     PRICE_50_100: "50-100",
     PRICE_100_200: "100-200",
     PRICE_CUSTOM: "विशेष",
+
+    CATEGORY: "श्रेणी",
+    DESCRIPTION: "विवरण",
+    TOTAL_AMOUNT: "कुल रक्कम",
+    AMOUNT: "रक्कम",
 
     # Summary
     SUMMARY: "सारांश",
