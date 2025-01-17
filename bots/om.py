@@ -135,7 +135,7 @@ async def handle_updates(update: Update, context: CallbackContext) -> None:
         # TODO(prashanth@): if this fails, send a reply_text asking the
         # user to retry.
         await update.message.reply_document(
-            document=create_summary(user_updates),
+            document=create_summary(updates=user_updates, metadata=[]),
             filename="summary.pdf")
 
     ts.insert_update(update)

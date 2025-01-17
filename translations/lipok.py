@@ -32,6 +32,7 @@ PRICE_0_50 = "0-50"
 PRICE_50_100 = "50-100"
 PRICE_100_200 = "100-200"
 PRICE_CUSTOM = "custom"
+SUMMARY = "summary"
 
 # Emojis
 EMOJI = {
@@ -52,6 +53,7 @@ EMOJI = {
     PETROL: "⛽",
     GAS: "⛽",
     DIESEL: "🛢️",
+    SUMMARY: "📊",
 }
 
 # Translations
@@ -90,6 +92,9 @@ TRANSLATIONS = {
     PRICE_50_100: "50-100",
     PRICE_100_200: "100-200",
     PRICE_CUSTOM: "Custom",
+
+    # Summary
+    SUMMARY: "Summary",
 }
 
 
@@ -128,10 +133,16 @@ TRANSLATIONS_MARATHI = {
     PRICE_50_100: "50-100",
     PRICE_100_200: "100-200",
     PRICE_CUSTOM: "विशेष",
+
+    # Summary
+    SUMMARY: "सारांश",
 }
 
+# TODO(prashanth@): Make this dynamic. Pipe it from the cmdline.
+LANGUAGE = "mr"
 
-def get_button_text(key: str, language: str = "mr") -> str:
+
+def get_button_text(key: str, language: str = LANGUAGE) -> str:
     """Get button text with emoji if available"""
     if language == "en":
         text = TRANSLATIONS[key]

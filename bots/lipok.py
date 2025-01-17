@@ -32,8 +32,10 @@ from store.db import TelegramStore, MongoManager
 from telegram.ext import CommandHandler, CallbackContext, MessageHandler, filters
 from telegram import Update
 import logging
+from typing import List, Dict, Any
 from .base import BaseBot
 import datetime
+from summary import create_summary
 from translations.lipok import *
 
 logger = logging.getLogger(__name__)
@@ -77,6 +79,19 @@ class LipokBotUpdate():
         ts.insert_metadata(metadata)
         logger.info(f"Inserted metadata: {metadata}")
 
+    @staticmethod
+    def get_user_metadata(user_id: int) -> List[Dict[str, Any]]:
+        """Get metadata for a user.
+
+        Args:
+            user_id: The user id to get metadata for.
+
+        Returns:
+            A list of metadata for the user.
+        """
+        ts = TelegramStore()
+        return ts.get_metadata(selection_path_pattern=f"{user_id}:")
+
 
 class LipokBot(BaseBot):
 
@@ -111,7 +126,9 @@ class LipokBot(BaseBot):
             [InlineKeyboardButton(get_button_text(
                 HOUSEHOLD), callback_data=f"category:{HOUSEHOLD}")],
             [InlineKeyboardButton(get_button_text(
-                FUEL), callback_data=f"category:{FUEL}")]
+                FUEL), callback_data=f"category:{FUEL}")],
+            [InlineKeyboardButton(get_button_text(
+                SUMMARY), callback_data=f"{SUMMARY}")]
         ]
         return InlineKeyboardMarkup(keyboard)
 
@@ -209,10 +226,31 @@ async def handle_button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     await query.answer()
 
+    # Kick the user back to /start if they end up in handle_button without
+    # selection_path. This can happen when they eg clear their chat history. At
+    # this point, their chat will still show the category buttons, but we want
+    # them to resume flow from /start.
+    if LipokBot.SELECTION_PATH not in context.user_data:
+        await clear_state_and_start(update, context)
+        return
+
     data = query.data.split(":")
-    current_path = f"{context.user_data[LipokBot.SELECTION_PATH]}:{data[-1]}"
+    current_path = f"{context.user_data.get(LipokBot.SELECTION_PATH, '/start')}:{data[-1]}"
     context.user_data[LipokBot.SELECTION_PATH] = current_path
     LipokBotUpdate.insert(update, selection_path=current_path)
+
+    if data[0] == SUMMARY:
+        user_metadata = LipokBotUpdate.get_user_metadata(
+            update.effective_user.id)
+        summary = create_summary(updates=[], metadata=user_metadata)
+        if summary is not None:
+            await query.message.reply_document(
+                document=summary,
+                filename="summary.pdf")
+        else:
+            await query.message.reply_text("No summary found")
+        await clear_state_and_start(update, context)
+        return
 
     # The use of "subcategory" is questionable and only works because we have 2
     # levels of categories. Once subcategory is observed, we drop the user into

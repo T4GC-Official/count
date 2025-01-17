@@ -220,6 +220,22 @@ class TelegramStore:
         self._db_manager.insert(metadata, self.db_name,
                                 self.metadata_table_name)
 
+    def get_metadata(self, selection_path_pattern: str, limit: int = 0) -> List[Dict[str, Any]]:
+        """Get metadata by selection path pattern.
+
+        Args:
+            selection_path_pattern: The selection path pattern to filter by.
+
+        Returns:
+            A list of updates that match the selection path pattern.
+        """
+        return self._db_manager.find(
+            {"selection_path": {"$regex": selection_path_pattern}},
+            limit=limit,
+            db_name=self.db_name,
+            table_name=self.metadata_table_name
+        )
+
     def get_updates_by_metadata(self, selection_path_pattern: str) -> List[Update]:
         """Get updates by metadata.
 
@@ -229,16 +245,12 @@ class TelegramStore:
         Returns:
             A list of updates that match the selection path pattern.
         """
-        metadata_docs = self._db_manager.find(
-            {"selection_path": {"$regex": selection_path_pattern}},
-            self.db_name,
-            self.metadata_table_name
-        )
+        metadata_docs = self.get_metadata(selection_path_pattern)
+        if not metadata_docs:
+            return []
 
-        # Get all update_ids
         update_ids = [doc["update_id"] for doc in metadata_docs]
 
-        # Then fetch all corresponding updates
         updates = []
         for update_id in update_ids:
             update_dict = self._db_manager.find_one(
@@ -247,7 +259,7 @@ class TelegramStore:
                 self.update_table_name
             )
             if update_dict:
-                update = Update.de_json(update_dict, self.bot)
+                update = Update.de_json(update_dict, self._bot)
                 updates.append(update)
 
         return updates
