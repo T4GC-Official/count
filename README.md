@@ -22,6 +22,8 @@ https://github.com/user-attachments/assets/a312d0e1-b29a-43d1-9994-21a7808af49b
 
 ## Running Count 
 
+First, install [docker](https://docs.docker.com/get-started/get-docker/) and [docker compose](https://docs.docker.com/compose/install/). 
+
 Build and run locally
 ```
 $ make build IMAGE=<your repo>/<your image name> TAG=latest DOCKERFILE=./Dockerfile
@@ -32,7 +34,7 @@ $ ansible-playbook playbook.yaml --connection=local --inventory 127.0.0.1, -K
 
 ## Deploying Count
 
-See [deployment guide](./docs/deployment.md) for AWS deployment. 
+See [deployment guide](./docs/deployment.md) for AWS fargate deployment. Note that if you are OK simply SSH-ing into a VM on AWS then you can simply following the steps in the "Running Count" section. 
 
 ## Contributing 
 
