@@ -19,7 +19,7 @@
 # Stop and remove existing containers with the same name
 - name: Stop and remove existing containers with the same name
   shell: |
-    docker-compose down
+    docker compose down
   args:
     chdir: "{{ ansible_env.HOME }}/ansible/organicmandya"
   ignore_errors: yes
@@ -32,7 +32,7 @@
 
 # Run Docker Compose to bring up the containers
 - name: Run Docker Compose
-  command: docker-compose up -d --build
+  command: docker compose up -d --build
   args:
     chdir: "{{ ansible_env.HOME }}/ansible/organicmandya"
 
