@@ -22,9 +22,36 @@ https://github.com/user-attachments/assets/a312d0e1-b29a-43d1-9994-21a7808af49b
 
 ## Running Count 
 
-First, install [docker](https://docs.docker.com/get-started/get-docker/) and [docker compose](https://docs.docker.com/compose/install/). 
+There are a several different ways to install and run count, depending on your environment    
+1. On a new VM: auto install the setup dependencies through the `setup_bot.sh` script     
+2. On a Mac: manually install docker and docker-compose (the instructions for a mac keep changing and you will have to look these up yourself)     
+3. On a "stale" VM or a linux laptop: use the ansible setup. Though this option is a bit heavier than the others, it ensures a clean setup of count.     
+4. On windows: currently untested, provision a linux vm, ssh into it and do setp 1. 
 
-Build and run locally
+### On a new VM (or a mac)
+
+Run these commands 
+```
+$ sudo apt-get install git 
+$ mkdir -p src/github.com/T4GC-Official/count 
+$ git clone @https://github.com/T4GC-Official/count.git 
+$ cd count 
+```
+At this point, if you're on a mac you should just manually install docker and docker-compose according to pulic documentation. 
+If you're on a vm, you can run
+```
+$ ./hack/setup_bot.sh
+```
+The following 2 steps should be the same whether on a mac or a VM
+```
+$ newgrp docker
+$ echo "API_KEY=<your-telegram-chatbot-api-key>" > ./.env
+$ docker compose up -d --build 
+```
+
+### Ansible deployment (on a linux laptop) 
+
+There are several advantages to using ansible. Most notably, the setup is cleaner - so for example if you are running count on an existing VM with unknown dependencies already `apt-get installed` (or on your linux laptop) - you would like for that not _not_ conflict with your count deployment. Ansible setup handles this by rsyncing the source and a clean set of requirements into a temp directory. To run through ansible, first, install [docker](https://docs.docker.com/get-started/get-docker/) and [docker compose](https://docs.docker.com/compose/install/), then, build the image and run it locally
 ```
 $ make build IMAGE=<your repo>/<your image name> TAG=latest DOCKERFILE=./Dockerfile
 $ echo "API_KEY=<your-telegram-chatbot-api-key>" > ./.env
