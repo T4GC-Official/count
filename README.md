@@ -34,6 +34,7 @@ Run these commands
 ```
 $ sudo apt-get install git 
 $ mkdir -p src/github.com/T4GC-Official/count 
+$ cd src/github.com/T4GC-Official/count 
 $ git clone @https://github.com/T4GC-Official/count.git 
 $ cd count 
 ```
@@ -45,6 +46,7 @@ $ ./hack/setup_bot.sh
 The following 2 steps should be the same whether on a mac or a VM
 ```
 $ newgrp docker
+# Your telegram chatbot key is retrieved via telegra's botfather chatroom
 $ echo "API_KEY=<your-telegram-chatbot-api-key>" > ./.env
 $ docker compose up -d --build 
 ```
