@@ -51,7 +51,7 @@ if ! command -v docker &> /dev/null; then
     sudo chmod a+r /etc/apt/keyrings/docker.asc
 
     # Add the repository to Apt sources:
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
     sudo apt-get update
     sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
@@ -81,4 +81,4 @@ echo ""
 echo "Next steps:"
 echo "1. If this is your first time running this script, please log out and log back in"
 echo "   (or run 'newgrp docker') to use Docker without sudo"
-echo "2. Run 'docker compose up -d --build' from the root directory to start Count"
+echo "2. Run 'docker compose up -d --build' from the root directory to start Count - but make sure you have a .env file with the right credentials (see README.md)"
