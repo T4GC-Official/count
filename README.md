@@ -46,7 +46,8 @@ $ ./hack/setup_bot.sh
 The following 2 steps should be the same whether on a mac or a VM
 ```
 $ newgrp docker
-# Your telegram chatbot key is retrieved via telegra's botfather chatroom
+# Your telegram chatbot key is retrieved via telegra's botfather chatroom. 
+# If you are looking for a specific chatbot's API keys, ask the creators of that chatroom. 
 $ echo "API_KEY=<your-telegram-chatbot-api-key>" > ./.env
 $ docker compose up -d --build 
 ```
@@ -60,6 +61,20 @@ $ echo "API_KEY=<your-telegram-chatbot-api-key>" > ./.env
 $ cd ansible
 $ ansible-playbook playbook.yaml --connection=local --inventory 127.0.0.1, -K
 ```
+
+## Data dumps 
+
+You can get data dumps as excel files in your email. First ask the creator of the chatbot (if it isn't you) for the SMTP password. This is the app password of the gmail account in the "from" field of the emails. This password is typically stored in the same `.env` file as the `API_KEY` of the chatbot. 
+```console 
+$ docker ps 
+CONTAINER ID   IMAGE           COMMAND                  CREATED          STATUS          PORTS       NAMES
+5cfd1acdd549   count-chatbot   "supervisord -c /etc…"   20 minutes ago   Up 20 minutes   27017/tcp   chatbot
+
+$ docker exec -it chatbot /bin/bash
+
+# python3 hack/mongo_to_excel.py --email recipient@example.com --smtp-user your.email@gmail.com --smtp-password "your-16-char-app-password" 
+```
+For example to email `yourself@hotmail.com` the usage report, set that as the `--email` and set `--smtp-user` to `lipokchatbot@gmail.com`. Ask the creator of `lipokchatbot@gmail.com` for the `app password` for that account (or check `.env`) and use that as `--smtp-password`. 
 
 ## Deploying Count
 
